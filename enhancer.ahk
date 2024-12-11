@@ -1,4 +1,4 @@
-; -*- coding: utf-8-bom -*-
+﻿; -*- coding: utf-8-bom -*-
 
 ; TODO:用autohotkey v2重写
 #Persistent
