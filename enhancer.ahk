@@ -9,56 +9,72 @@ SetWinDelay(10) ; Set the delay between window operations (in milliseconds)
 SetKeyDelay(0) ; Set no delay between key presses
 CoordMode('Mouse', 'Screen') ; Set mouse coordinates mode to screen
 
+; Initialize script settings
 app := A_WinDir '\explorer.exe'  ; 定义 Explorer 可执行文件的路径
 winTitle := 'ahk_exe' app            ; 设置窗口标题（基于可执行文件的路径）
 hwnd := WinWaitActive(winTitle)  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
-MonitorGet 1, &L, &T, &R, &B
-WinMove(-10, 0, (R / 2) + 20, B + 10,winTitle)
-WinHide(hwnd)
-if WinActive(hwnd) {
-    Send('!{Esc}')
-}
-hide := 1
-EdgeWidth := 10  ; Edge width for detecting mouse proximity
+hide := true
 Exiting := 0  ; Flag to indicate the script is not exiting
 
+MonitorGet 1, &left, &top, &right, &bottom
+initWindow(winTitle, right, bottom)
+
 ; Monitor mouse position and show/hide window
-SetTimer(CheckMouse, 300)
+SetTimer(CheckMouseProximity.Bind(hwnd), 300)
 
 while (true) {
+    ; Handle rename window actions
+    HandleRenameWindow()
+}
+
+; ---------------------------------------------------------
+; Function Definitions
+
+HandleRenameWindow() {
     WinWaitActive('重命名 ahk_class #32770')
     Send('y')
 }
 
-CheckMouse() {
+initWindow(winTitle, right, bottom) {
+
+    hwnd := WinWaitActive(winTitle)  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
+    WinMove(-10, 0, (right / 2) + 20, bottom + 10, winTitle)
+    WinHide(hwnd)
+    if WinActive(hwnd) {
+        Send('!{Esc}')
+    }
+}
+
+CheckMouseProximity(hwnd) {
+
     MouseGetPos(&MouseX, &MouseY) ; Get the mouse position
 
-    global hwnd
-    WinGetPos(&x, &y, &Width, &Height, hwnd)
-    if (x < 0) {
-        x := 0
-    }
-    if (y < 0) {
-        y := 0
-    }
+    WinGetPos(&windowX, &windowY, &windowWidth, &windowHeight, hwnd)
+    windowX := Max(windowX, 0)
+    windowY := Max(windowY, 0)
+
+    ; Check mouse proximity to the left edge and handle window visibility
+    ManageWindowVisibility(MouseX, MouseY, windowX, windowY, windowWidth, windowHeight, hwnd)
 
     ; Debugging information
-    global R
-    global B
-    ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " x "x" y " size: " Width "x" Height "`n" R "x" B "`n编码测试" )
+    global right
+    global bottom
+    ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " windowX "x" windowY " size: " windowWidth "x" windowHeight "`n" right "x" bottom "`n编码测试"
+    )
 
+}
+
+ManageWindowVisibility(MouseX, MouseY, windowX, windowY, windowWidth, windowHeight, hwnd) {
     ; Detect if the mouse is close to the left edge of the screen
     global hide
-    global EdgeWidth
-    global Exiting
-    if (hide) {
-        if (MouseX < EdgeWidth) {
-            WinShow(hwnd)
-            WinActivate(hwnd)
-            hide := 0
-        }
+    static EdgeWidth := 10  ; Edge width for detecting mouse proximity
+
+    if (hide && MouseX < EdgeWidth) {
+        WinShow(hwnd)
+        WinActivate(hwnd)
+        hide := false
     } else {
-        if (MouseX <= x + Width && MouseY >= y && MouseY <= y + Height) {
+        if (MouseX <= windowX + windowWidth && MouseY >= windowY && MouseY <= windowY + windowHeight) {
             return
         }
         WinHide(hwnd)
