@@ -57,9 +57,9 @@ CheckMouseProximity(hwnd) {
     ManageWindowVisibility(MouseX, MouseY, windowX, windowY, windowWidth, windowHeight, hwnd)
 
     ; Debugging information
-    global right
-    global bottom
-    ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " windowX "x" windowY " size: " windowWidth "x" windowHeight "`n" right "x" bottom "`n编码测试"
+    ; global right
+    ; global bottom
+    ; ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " windowX "x" windowY " size: " windowWidth "x" windowHeight "`n" right "x" bottom "`n编码测试"
     )
 
 }
