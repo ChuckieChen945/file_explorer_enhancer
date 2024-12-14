@@ -73,7 +73,7 @@ CheckMouseProximity(hwnd) {
 ManageWindowVisibility(MouseX, MouseY, windowX, windowY, windowWidth, windowHeight, hwnd) {
     ; Detect if the mouse is close to the left edge of the screen
     global hide
-    static EdgeWidth := 10  ; Edge width for detecting mouse proximity
+    static EdgeWidth := 2  ; Edge width for detecting mouse proximity
 
     if (hide && MouseX < EdgeWidth) {
         WinShow(hwnd)
