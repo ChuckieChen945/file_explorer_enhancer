@@ -12,6 +12,7 @@ CoordMode('Mouse', 'Screen') ; Set mouse coordinates mode to screen
 ; Initialize script settings
 app := A_WinDir '\explorer.exe'  ; 定义 Explorer 可执行文件的路径
 winTitle := 'ahk_exe' app            ; 设置窗口标题（基于可执行文件的路径）
+run app
 hwnd := WinWaitActive(winTitle)  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
 hide := true
 Exiting := 0  ; Flag to indicate the script is not exiting
@@ -37,8 +38,8 @@ HandleRenameWindow() {
 
 initWindow(winTitle, right, bottom) {
 
-    hwnd := WinWaitActive(winTitle)  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
-    WinMove(-10, 0, (right / 2) + 20, bottom + 10, winTitle)
+    ; hwnd := WinWaitActive(winTitle)  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
+    WinMove(-10, 0, (right / 2) + 20, bottom + 10, hwnd)
     WinHide(hwnd)
     if WinActive(hwnd) {
         Send('!{Esc}')
@@ -46,6 +47,10 @@ initWindow(winTitle, right, bottom) {
 }
 
 CheckMouseProximity(hwnd) {
+
+    if !WinExist('ahk_id ' hwnd) {
+        ExitApp()
+    }
 
     MouseGetPos(&MouseX, &MouseY) ; Get the mouse position
 
@@ -59,7 +64,8 @@ CheckMouseProximity(hwnd) {
     ; Debugging information
     ; global right
     ; global bottom
-    ; ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " windowX "x" windowY " size: " windowWidth "x" windowHeight "`n" right "x" bottom "`n编码测试"
+    ; global hide
+    ; ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " windowX "x" windowY " size: " windowWidth "x" windowHeight "`n" right "x" bottom "`n编码测试" "`nhide:" hide
     ; )
 
 }
