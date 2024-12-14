@@ -60,7 +60,7 @@ CheckMouseProximity(hwnd) {
     ; global right
     ; global bottom
     ; ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " windowX "x" windowY " size: " windowWidth "x" windowHeight "`n" right "x" bottom "`n编码测试"
-    )
+    ; )
 
 }
 
