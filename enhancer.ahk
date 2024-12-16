@@ -9,6 +9,8 @@ SetWinDelay(10) ; Set the delay between window operations (in milliseconds)
 SetKeyDelay(0) ; Set no delay between key presses
 CoordMode('Mouse', 'Screen') ; Set mouse coordinates mode to screen
 
+Sleep(2000) ; 等待进入桌面并稳定下来
+
 ; Initialize script settings
 app := A_WinDir '\explorer.exe'  ; 定义 Explorer 可执行文件的路径
 winTitle := 'ahk_exe' app            ; 设置窗口标题（基于可执行文件的路径）
@@ -75,7 +77,7 @@ ManageWindowVisibility(MouseX, MouseY, windowX, windowY, windowWidth, windowHeig
     global hide
     static EdgeWidth := 2  ; Edge width for detecting mouse proximity
 
-    if (hide && MouseX < EdgeWidth) {
+    if (hide && MouseX < EdgeWidth && MouseY < 200) {
         WinShow(hwnd)
         WinActivate(hwnd)
         hide := false
