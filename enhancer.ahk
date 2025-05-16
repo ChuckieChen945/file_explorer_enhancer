@@ -12,15 +12,12 @@ CoordMode('Mouse', 'Screen') ; Set mouse coordinates mode to screen
 Sleep(2000) ; 等待进入桌面并稳定下来
 
 ; Initialize script settings
-app := A_WinDir '\explorer.exe'  ; 定义 Explorer 可执行文件的路径
-winTitle := 'ahk_exe' app            ; 设置窗口标题（基于可执行文件的路径）
-run app
-hwnd := WinWaitActive(winTitle)  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
+hwnd := GetExplorerHwnd("E:\")  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
 hide := true
 Exiting := 0  ; Flag to indicate the script is not exiting
 
 MonitorGet 1, &left, &top, &right, &bottom
-initWindow(winTitle, right, bottom)
+initWindow(right, bottom)
 
 ; Monitor mouse position and show/hide window
 SetTimer(CheckMouseProximity.Bind(hwnd), 300)
@@ -38,9 +35,8 @@ HandleRenameWindow() {
     Send('y')
 }
 
-initWindow(winTitle, right, bottom) {
+initWindow(right, bottom) {
 
-    ; hwnd := WinWaitActive(winTitle)  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
     WinMove(-10, 0, (right / 2) + 20, bottom + 10, hwnd)
     WinHide(hwnd)
     if WinActive(hwnd) {
@@ -106,4 +102,27 @@ UnhideAll() {
     if (Exiting) {
         ExitApp()
     }
+}
+
+GetExplorerHwnd(path := "E:\") {
+    ; 创建 Shell.Application COM 对象
+    explorer := ComObject("Shell.Application")
+    explorer.Open(path)
+
+    Sleep 500  ; 等待窗口创建
+
+    windows := explorer.Windows
+    needle := "file:///" StrReplace(path, "\", "/")
+
+    ; 保证路径末尾有斜杠（与 LocationURL 匹配）
+    if SubStr(needle, -1) != "/"
+        needle .= "/"
+
+    Loop windows.Count {
+        win := windows.Item(A_Index - 1)
+        if InStr(win.FullName, "explorer.exe") && InStr(win.LocationURL, needle) {
+            return win.HWND
+        }
+    }
+    return 0
 }
