@@ -10,13 +10,17 @@ SetWinDelay(10)
 SetKeyDelay(0)
 CoordMode('Mouse', 'Screen')
 
-; ---------- 启动与初始化 ----------
-global isHide := false
-global Exiting := false
-global OneCmdHwnd := 0
-global OneCmdPid := 0
+; ---------- 全局状态对象 ----------
+global State := {
+    IsHidden: false,
+    Exiting: false,
+    OneCmdHwnd: 0,
+    OneCmdPid: 0,
+    TargetProcess: "notepad.exe"
+}
 
-Run('notepad.exe')
+; ---------- 启动 ----------
+Run(State.TargetProcess)
 
 ; ---------- 定时器 ----------
 SetTimer(CheckMouseProximity, 3000)
@@ -36,75 +40,67 @@ HandleRenameDialog() {
 
 InitOneCommanderWindow() {
     MonitorGet(1, , , &screenW, &screenH)
-    WinMove(-10, 0, (screenW / 2) + 20, screenH + 10, OneCmdHwnd)
-    WinHide(OneCmdHwnd)
-    if WinActive(OneCmdHwnd)
+    WinMove(-10, 0, screenW / 2 + 20, screenH + 10, State.OneCmdHwnd)
+    WinHide(State.OneCmdHwnd)
+    if WinActive(State.OneCmdHwnd)
         Send('!{Esc}')
-    global isHide := true
+    State.IsHidden := true
 }
 
 CheckMouseProximity() {
     UpdateOneCommanderHandles()
-    if (!OneCmdHwnd) {
+    if !State.OneCmdHwnd
         return
-    }
 
     MouseGetPos(&x, &y, &hoverHwnd)
     hoverPid := WinGetPID("ahk_id " hoverHwnd)
 
-    if IsMouseInToggleRegion(x, y) {
-        try {
-            WinShow(OneCmdHwnd)
-            WinActivate(OneCmdHwnd)
-            global isHide := false
-        } catch Error as e {
+    try {
+        if IsMouseInToggleRegion(x, y) {
+            WinShow(State.OneCmdHwnd)
+            WinActivate(State.OneCmdHwnd)
+            State.IsHidden := false
         }
-
-    }
-    else if (hoverPid != OneCmdPid) {
-        try {
-            WinHide(OneCmdHwnd)
-            if WinActive(OneCmdHwnd)
+        else if hoverPid != State.OneCmdPid {
+            WinHide(State.OneCmdHwnd)
+            if WinActive(State.OneCmdHwnd)
                 Send('!{Esc}')
-            global isHide := true
-        } catch Error as e {
+            State.IsHidden := true
         }
+    } catch Error {
+        ; 忽略错误
     }
 }
 
 IsMouseInToggleRegion(x, y) {
-    return isHide && x < 2 && y < 200
+    return State.IsHidden && x < 2 && y < 200
 }
 
 HandleExit(reason, code) {
-    global Exiting := true
+    State.Exiting := true
     ExitGracefully()
 }
 
 ExitGracefully() {
-    if (OneCmdHwnd) {
-        WinShow(OneCmdHwnd)
-        WinActivate(OneCmdHwnd)
+    if State.OneCmdHwnd {
+        WinShow(State.OneCmdHwnd)
+        WinActivate(State.OneCmdHwnd)
     }
     ExitApp()
 }
 
 UpdateOneCommanderHandles() {
-
-    ProcessName := "notepad.exe"
-
-    if (!OneCmdPid) {
-        winList := WinGetList("ahk_exe" . ProcessName)
-        global OneCmdHwnd := winList.Length >= 1 ? winList[1] : 0
-        global OneCmdPid := OneCmdHwnd ? WinGetPID(OneCmdHwnd) : 0
-        if OneCmdPid {
+    if !State.OneCmdPid {
+        winList := WinGetList("ahk_exe " . State.TargetProcess)
+        State.OneCmdHwnd := winList.Length >= 1 ? winList[1] : 0
+        State.OneCmdPid := State.OneCmdHwnd ? WinGetPID(State.OneCmdHwnd) : 0
+        if State.OneCmdPid {
             InitOneCommanderWindow()
         }
     }
-    else if (!ProcessExist(OneCmdPid)) {
-        global OneCmdHwnd := 0
-        global OneCmdPid := 0
-        global isHide := false
+    else if !ProcessExist(State.OneCmdPid) {
+        State.OneCmdHwnd := 0
+        State.OneCmdPid := 0
+        State.IsHidden := false
     }
-
 }
