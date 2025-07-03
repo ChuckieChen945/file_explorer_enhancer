@@ -1,41 +1,48 @@
 #Requires AutoHotkey v2.0
-
-Persistent
 #SingleInstance Force
+Persistent
 
-OnExit(ForceExit)
+; ---------- 全局设置 ----------
+OnExit(HandleExit)
 SetTitleMatchMode(2)
 DetectHiddenWindows(true)
 SetWinDelay(10)
 SetKeyDelay(0)
 CoordMode('Mouse', 'Screen')
 
-Run('D:\scoop\apps\onecommander\current\OneCommander.exe')
-Sleep(5000)
-hwndAndPid := GetOnecommanderHwndAndPid()
-hwnd := hwndAndPid[1]
-global hide := true
+; ---------- 启动与初始化 ----------
+global HideWindow := true
 global Exiting := false
+global OneCmdHwnd := 0
+global OneCmdPid := 0
 
-MonitorGet 1, &left, &top, &right, &bottom
-InitWindow(hwnd, right, bottom)
+; Run('D:\scoop\apps\onecommander\current\OneCommander.exe')
+Run('notepad.exe')
+Sleep(5000)
 
-; 计时器管理窗口显示
+UpdateOneCommanderHandles()
+if (OneCmdHwnd) {
+    MonitorGet(1, &left, &top, &right, &bottom)
+    InitOneCommanderWindow(OneCmdHwnd, right, bottom)
+}
+
+; ---------- 定时器 ----------
 SetTimer(CheckMouseProximity, 300)
-; 计时器监控重命名窗口
-SetTimer(HandleRenameWindow, 300)
+SetTimer(HandleRenameDialog, 300)
 
-return  ; 进入空循环由 SetTimer 控制
+return
 
-; ---------- Function Definitions ----------
+; ===============================
+;         函数定义区域
+; ===============================
 
-HandleRenameWindow() {
+HandleRenameDialog() {
     if WinActive("重命名 ahk_class #32770") {
         Send('y')
     }
 }
 
-InitWindow(hwnd, screenW, screenH) {
+InitOneCommanderWindow(hwnd, screenW, screenH) {
     WinMove(-10, 0, (screenW / 2) + 20, screenH + 10, hwnd)
     WinHide(hwnd)
     if WinActive(hwnd)
@@ -43,76 +50,54 @@ InitWindow(hwnd, screenW, screenH) {
 }
 
 CheckMouseProximity() {
-
-    temp := GetOnecommanderHwndAndPid()
-    hwnd := temp[1]
-    pid := temp[2]
-
-    if !WinExist("ahk_id " hwnd)
+    UpdateOneCommanderHandles()
+    if !WinExist("ahk_id " OneCmdHwnd)
         return
 
-    ; 获取鼠标指针下的窗口句柄
-    MouseGetPos(&x, &y, &active_hwnd)
-    ; 获取该窗口对应的 PID
-    active_pid := WinGetPID("ahk_id " active_hwnd)
+    MouseGetPos(&x, &y, &hoverHwnd)
+    hoverPid := WinGetPID("ahk_id " hoverHwnd)
 
-    Tooltip(
-        "Mouse: (" x ", " y ")\n"
-        "UnderMouse HWND: " active_hwnd "\n"
-        "UnderMouse PID: " active_pid "\n"
-        "Target HWND: " hwnd "\n"
-        "Target PID: " pid
-    )
-    WinGetPos(&wx, &wy, &ww, &wh, active_hwnd)
+    ; Tooltip(
+    ;     "Mouse: (" x ", " y ")\n"
+    ;     "UnderMouse HWND: " hoverHwnd "\n"
+    ;     "UnderMouse PID: " hoverPid "\n"
+    ;     "Target HWND: " OneCmdHwnd "\n"
+    ;     "Target PID: " OneCmdPid
+    ; )
 
-    if IsMouseInActiveRegion(x, y) {
-        WinShow(hwnd)
-        WinActivate(hwnd)
-        hide := false
+    if IsMouseInToggleRegion(x, y) {
+        WinShow(OneCmdHwnd)
+        WinActivate(OneCmdHwnd)
+        HideWindow := false
     }
-    else if (active_pid != pid) {
-        ; if !IsMouseInWindow(x, y, wx, wy, ww, wh) {
-        WinHide(hwnd)
-        if WinActive(hwnd)
+    else if (hoverPid != OneCmdPid) {
+        WinHide(OneCmdHwnd)
+        if WinActive(OneCmdHwnd)
             Send('!{Esc}')
-        hide := true
-        ; }
-
+        HideWindow := true
     }
 }
 
-IsMouseInActiveRegion(x, y) {
-    return hide && x < 2 && y < 200
+IsMouseInToggleRegion(x, y) {
+    return HideWindow && x < 2 && y < 200
 }
 
-IsMouseInWindow(x, y, wx, wy, ww, wh) {
-    return (x >= wx && x <= wx + ww && y >= wy && y <= wy + wh)
+HandleExit(reason, code) {
+    Exiting := true
+    ExitGracefully()
 }
 
-ForceExit(reason, code) {
-    global Exiting := true
-    UnhideAndExit()
-}
-
-UnhideAndExit() {
-    global hwnd
-    WinShow(hwnd)
-    WinActivate(hwnd)
-    if Exiting
-        ExitApp()
-}
-
-GetOnecommanderHwndAndPid() {
-
-    ProcessName := "OneCommander.exe"
-    pid := ProcessExist(ProcessName)
-    if pid {
-        hwnd := WinGetID("ahk_exe " . ProcessName)
-        if hwnd {
-            return [hwnd, pid]
-        }
+ExitGracefully() {
+    if (OneCmdHwnd) {
+        WinShow(OneCmdHwnd)
+        WinActivate(OneCmdHwnd)
     }
-    else {
-        return [0, 0]
-    }
+    ExitApp()
+}
+UpdateOneCommanderHandles() {
+    ProcessName := "notepad.exe"
+    winList := WinGetList("ahk_exe " . ProcessName)
+    global OneCmdHwnd := winList[1]
+    global OneCmdPid := WinGetPID(OneCmdHwnd)
+
 }
