@@ -6,8 +6,7 @@ Persistent
 InitApp()
 
 ; ========== 定时器注册 ==========
-; 1437 1750
-SetTimer(CheckMouseProximity, 1650)
+SetTimer(CheckMouseProximity, 300)
 SetTimer(HandleRenameDialog, 300)
 
 return
@@ -19,7 +18,7 @@ InitApp() {
         Exiting: false,
         OneCmdHwnd: 0,
         OneCmdPid: 0,
-        TargetProcess: "notepad.exe"
+        TargetProcess: "onecommander.exe"
     }
 
     OnExit(HandleExit)
@@ -30,6 +29,9 @@ InitApp() {
     CoordMode("Mouse", "Screen")
 
     Run(AppState.TargetProcess)
+    Sleep(5000)
+    UpdateTargetWindowHandles()
+    InitTargetWindow()
 }
 
 ; ========== 主逻辑处理函数 ==========
@@ -82,12 +84,31 @@ HideTargetWindow() {
 UpdateTargetWindowHandles() {
     if !AppState.OneCmdPid {
         hwndList := WinGetList("ahk_exe " . AppState.TargetProcess)
-        AppState.OneCmdHwnd := hwndList.Length >= 1 ? hwndList[1] : 0
-        AppState.OneCmdPid := AppState.OneCmdHwnd ? WinGetPID(AppState.OneCmdHwnd) : 0
+        found := false
 
-        if AppState.OneCmdPid {
-            InitTargetWindow()
+        for hwnd in hwndList {
+            try {
+                style := WinGetStyle(hwnd)
+
+                if (style & 0x10000000) {
+
+                    AppState.OneCmdHwnd := hwnd
+                    AppState.OneCmdPid := WinGetPID(hwnd)
+
+                    found := true
+                    break
+                }
+            } catch {
+                continue
+            }
         }
+
+        ; 如果没有找到匹配窗口，清空状态
+        if !found {
+            AppState.OneCmdHwnd := 0
+            AppState.OneCmdPid := 0
+        }
+
     } else if !ProcessExist(AppState.OneCmdPid) {
         ResetTargetState()
     }
@@ -95,6 +116,7 @@ UpdateTargetWindowHandles() {
 
 InitTargetWindow() {
     MonitorGet(1, , , &screenW, &screenH)
+    ; 这一行报错：Error: Target window not found.
     WinMove(-10, 0, screenW / 2 + 20, screenH + 10, AppState.OneCmdHwnd)
     WinHide(AppState.OneCmdHwnd)
     if WinActive(AppState.OneCmdHwnd)
