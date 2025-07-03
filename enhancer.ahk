@@ -11,23 +11,15 @@ SetKeyDelay(0)
 CoordMode('Mouse', 'Screen')
 
 ; ---------- 启动与初始化 ----------
-global HideWindow := true
+global isHide := false
 global Exiting := false
 global OneCmdHwnd := 0
 global OneCmdPid := 0
 
-; Run('D:\scoop\apps\onecommander\current\OneCommander.exe')
 Run('notepad.exe')
-Sleep(5000)
-
-UpdateOneCommanderHandles()
-if (OneCmdHwnd) {
-    MonitorGet(1, &left, &top, &right, &bottom)
-    InitOneCommanderWindow(OneCmdHwnd, right, bottom)
-}
 
 ; ---------- 定时器 ----------
-SetTimer(CheckMouseProximity, 300)
+SetTimer(CheckMouseProximity, 3000)
 SetTimer(HandleRenameDialog, 300)
 
 return
@@ -42,48 +34,50 @@ HandleRenameDialog() {
     }
 }
 
-InitOneCommanderWindow(hwnd, screenW, screenH) {
-    WinMove(-10, 0, (screenW / 2) + 20, screenH + 10, hwnd)
-    WinHide(hwnd)
-    if WinActive(hwnd)
+InitOneCommanderWindow() {
+    MonitorGet(1, , , &screenW, &screenH)
+    WinMove(-10, 0, (screenW / 2) + 20, screenH + 10, OneCmdHwnd)
+    WinHide(OneCmdHwnd)
+    if WinActive(OneCmdHwnd)
         Send('!{Esc}')
+    global isHide := true
 }
 
 CheckMouseProximity() {
     UpdateOneCommanderHandles()
-    if !WinExist("ahk_id " OneCmdHwnd)
+    if (!OneCmdHwnd) {
         return
+    }
 
     MouseGetPos(&x, &y, &hoverHwnd)
     hoverPid := WinGetPID("ahk_id " hoverHwnd)
 
-    ; Tooltip(
-    ;     "Mouse: (" x ", " y ")\n"
-    ;     "UnderMouse HWND: " hoverHwnd "\n"
-    ;     "UnderMouse PID: " hoverPid "\n"
-    ;     "Target HWND: " OneCmdHwnd "\n"
-    ;     "Target PID: " OneCmdPid
-    ; )
-
     if IsMouseInToggleRegion(x, y) {
-        WinShow(OneCmdHwnd)
-        WinActivate(OneCmdHwnd)
-        HideWindow := false
+        try {
+            WinShow(OneCmdHwnd)
+            WinActivate(OneCmdHwnd)
+            global isHide := false
+        } catch Error as e {
+        }
+
     }
     else if (hoverPid != OneCmdPid) {
-        WinHide(OneCmdHwnd)
-        if WinActive(OneCmdHwnd)
-            Send('!{Esc}')
-        HideWindow := true
+        try {
+            WinHide(OneCmdHwnd)
+            if WinActive(OneCmdHwnd)
+                Send('!{Esc}')
+            global isHide := true
+        } catch Error as e {
+        }
     }
 }
 
 IsMouseInToggleRegion(x, y) {
-    return HideWindow && x < 2 && y < 200
+    return isHide && x < 2 && y < 200
 }
 
 HandleExit(reason, code) {
-    Exiting := true
+    global Exiting := true
     ExitGracefully()
 }
 
@@ -94,10 +88,23 @@ ExitGracefully() {
     }
     ExitApp()
 }
+
 UpdateOneCommanderHandles() {
+
     ProcessName := "notepad.exe"
-    winList := WinGetList("ahk_exe " . ProcessName)
-    global OneCmdHwnd := winList[1]
-    global OneCmdPid := WinGetPID(OneCmdHwnd)
+
+    if (!OneCmdPid) {
+        winList := WinGetList("ahk_exe" . ProcessName)
+        global OneCmdHwnd := winList.Length >= 1 ? winList[1] : 0
+        global OneCmdPid := OneCmdHwnd ? WinGetPID(OneCmdHwnd) : 0
+        if OneCmdPid {
+            InitOneCommanderWindow()
+        }
+    }
+    else if (!ProcessExist(OneCmdPid)) {
+        global OneCmdHwnd := 0
+        global OneCmdPid := 0
+        global isHide := false
+    }
 
 }
