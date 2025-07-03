@@ -1,107 +1,84 @@
 #Requires AutoHotkey v2.0
 
 Persistent
-OnExit(ForceExit) ; When the script exits, ForceExit subroutine is called
-SetTitleMatchMode(2)  ; Set title match mode to "contains"
-DetectHiddenWindows(true) ; Allow AHK to detect hidden windows (e.g., minimized ones)
 #SingleInstance Force
-SetWinDelay(10) ; Set the delay between window operations (in milliseconds)
-SetKeyDelay(0) ; Set no delay between key presses
-CoordMode('Mouse', 'Screen') ; Set mouse coordinates mode to screen
 
-Sleep(2000) ; 等待进入桌面并稳定下来
+OnExit(ForceExit)
+SetTitleMatchMode(2)
+DetectHiddenWindows(true)
+SetWinDelay(10)
+SetKeyDelay(0)
+CoordMode('Mouse', 'Screen')
 
-; Initialize script settings
-hwnd := GetExplorerHwnd("E:\")  ; 等待窗口变为活动状态，并将其句柄存入 hWnd
-hide := true
-Exiting := 0  ; Flag to indicate the script is not exiting
+Sleep(2000)  ; 稳定桌面
+
+global hwnd := GetExplorerHwnd("E:\")
+global hide := true
+global Exiting := false
 
 MonitorGet 1, &left, &top, &right, &bottom
-initWindow(right, bottom)
+InitWindow(hwnd, right, bottom)
 
-; Monitor mouse position and show/hide window
-SetTimer(CheckMouseProximity.Bind(hwnd), 300)
+; 计时器管理窗口显示
+SetTimer(() => CheckMouseProximity(hwnd), 300)
+; 计时器监控重命名窗口
+SetTimer(HandleRenameWindow, 300)
 
-while (true) {
-    ; Handle rename window actions
-    HandleRenameWindow()
-}
+Return  ; 进入空循环由 SetTimer 控制
 
-; ---------------------------------------------------------
-; Function Definitions
+; ---------- Function Definitions ----------
 
 HandleRenameWindow() {
-    WinWaitActive('重命名 ahk_class #32770')
-    Send('y')
+    if WinActive("重命名 ahk_class #32770") {
+        Send('y')
+    }
 }
 
-initWindow(right, bottom) {
-
-    WinMove(-10, 0, (right / 2) + 20, bottom + 10, hwnd)
+InitWindow(hwnd, screenW, screenH) {
+    WinMove(-10, 0, (screenW / 2) + 20, screenH + 10, hwnd)
     WinHide(hwnd)
-    if WinActive(hwnd) {
+    if WinActive(hwnd)
         Send('!{Esc}')
-    }
 }
 
 CheckMouseProximity(hwnd) {
-
-    if !WinExist('ahk_id ' hwnd) {
+    if !WinExist("ahk_id " hwnd)
         ExitApp()
-    }
 
-    MouseGetPos(&MouseX, &MouseY) ; Get the mouse position
+    MouseGetPos(&x, &y)
+    WinGetPos(&wx, &wy, &ww, &wh, hwnd)
 
-    WinGetPos(&windowX, &windowY, &windowWidth, &windowHeight, hwnd)
-    windowX := Max(windowX, 0)
-    windowY := Max(windowY, 0)
-
-    ; Check mouse proximity to the left edge and handle window visibility
-    ManageWindowVisibility(MouseX, MouseY, windowX, windowY, windowWidth, windowHeight, hwnd)
-
-    ; Debugging information
-    ; global right
-    ; global bottom
-    ; global hide
-    ; ToolTip("mouse: " MouseX "x" MouseY "`nwindow: " windowX "x" windowY " size: " windowWidth "x" windowHeight "`n" right "x" bottom "`n编码测试" "`nhide:" hide
-    ; )
-
-}
-
-ManageWindowVisibility(MouseX, MouseY, windowX, windowY, windowWidth, windowHeight, hwnd) {
-    ; Detect if the mouse is close to the left edge of the screen
-    global hide
-    static EdgeWidth := 2  ; Edge width for detecting mouse proximity
-
-    if (hide && MouseX < EdgeWidth && MouseY < 200) {
+    if ShouldShowWindow(x, y, wx, wy, ww, wh) {
         WinShow(hwnd)
         WinActivate(hwnd)
         hide := false
-    } else {
-        if (MouseX <= windowX + windowWidth && MouseY >= windowY && MouseY <= windowY + windowHeight) {
-            return
-        }
+    } else if !IsMouseInWindow(x, y, wx, wy, ww, wh) {
         WinHide(hwnd)
-        if WinActive(hwnd) {
+        if WinActive(hwnd)
             Send('!{Esc}')
-        }
-        hide := 1
+        hide := true
     }
 }
 
-ForceExit(ExitReason, ExitCode) {
-    global Exiting
-    Exiting := 1
-    UnhideAll()
+ShouldShowWindow(x, y, wx, wy, ww, wh) {
+    return hide && x < 2 && y < 200
 }
 
-UnhideAll() {
+IsMouseInWindow(x, y, wx, wy, ww, wh) {
+    return (x >= wx && x <= wx + ww && y >= wy && y <= wy + wh)
+}
+
+ForceExit(reason, code) {
+    global Exiting := true
+    UnhideAndExit()
+}
+
+UnhideAndExit() {
+    global hwnd
     WinShow(hwnd)
     WinActivate(hwnd)
-    global Exiting
-    if (Exiting) {
+    if Exiting
         ExitApp()
-    }
 }
 
 GetExplorerHwnd(path := "E:\") {
