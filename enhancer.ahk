@@ -28,10 +28,14 @@ InitApp() {
     SetKeyDelay(0)
     CoordMode("Mouse", "Screen")
 
-    Run(AppState.TargetProcess)
-    Sleep(5000)
-    UpdateTargetWindowHandles()
-    InitTargetWindow()
+    hwndList := WinGetList("ahk_exe " . AppState.TargetProcess)
+
+    if hwndList.Length == 0 {
+        Run(AppState.TargetProcess)
+        Sleep(5000)
+        UpdateTargetWindowHandles()
+        InitTargetWindow()
+    }
 }
 
 ; ========== 主逻辑处理函数 ==========
@@ -48,10 +52,10 @@ CheckMouseProximity() {
     if !AppState.OneCmdHwnd
         return
 
-    MouseGetPos(&x, &y, &hoverHwnd)
-    hoverPid := WinGetPID("ahk_id " hoverHwnd)
-
     try {
+        MouseGetPos(&x, &y, &hoverHwnd)
+        hoverPid := WinGetPID("ahk_id " hoverHwnd)
+
         if ShouldShowTarget(x, y) {
             ShowTargetWindow()
         } else if hoverPid != AppState.OneCmdPid {
