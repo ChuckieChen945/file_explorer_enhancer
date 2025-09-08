@@ -18,7 +18,8 @@ InitApp() {
         Exiting: false,
         OneCmdHwnd: 0,
         OneCmdPid: 0,
-        TargetProcess: "onecommander.exe"
+        TargetProcess: "onecommander.exe",
+        TargetMonitor: 2   ; 默认放在主显示器，您可改为 2、3...
     }
 
     OnExit(HandleExit)
@@ -39,7 +40,6 @@ InitApp() {
 }
 
 ; ========== 主逻辑处理函数 ==========
-
 HandleRenameDialog() {
     if WinActive("重命名 ahk_class #32770") {
         Send("y")
@@ -67,9 +67,10 @@ CheckMouseProximity() {
 }
 
 ; ========== 状态处理函数 ==========
-
 ShouldShowTarget(x, y) {
-    return AppState.IsHidden && x < 2 && y < 200
+    ; 限定到目标显示器边缘
+    mon := GetMonitorBounds(AppState.TargetMonitor)
+    return AppState.IsHidden && x >= mon.Left && x < mon.Left + 2 && y >= mon.Top && y < mon.Top + 200
 }
 
 ShowTargetWindow() {
@@ -95,10 +96,8 @@ UpdateTargetWindowHandles() {
                 style := WinGetStyle(hwnd)
 
                 if (style & 0x10000000) {
-
                     AppState.OneCmdHwnd := hwnd
                     AppState.OneCmdPid := WinGetPID(hwnd)
-
                     found := true
                     break
                 }
@@ -107,7 +106,6 @@ UpdateTargetWindowHandles() {
             }
         }
 
-        ; 如果没有找到匹配窗口，清空状态
         if !found {
             AppState.OneCmdHwnd := 0
             AppState.OneCmdPid := 0
@@ -119,13 +117,18 @@ UpdateTargetWindowHandles() {
 }
 
 InitTargetWindow() {
-    MonitorGet(1, , , &screenW, &screenH)
-    ; 这一行报错：Error: Target window not found.
-    WinMove(-10, 0, screenW / 2 + 20, screenH + 10, AppState.OneCmdHwnd)
-    WinHide(AppState.OneCmdHwnd)
-    if WinActive(AppState.OneCmdHwnd)
-        Send("!{Esc}")
-    AppState.IsHidden := true
+    mon := GetMonitorBounds(AppState.TargetMonitor)
+
+    try {
+        WinMove(mon.Left - 10, mon.Top, (mon.Right - mon.Left) / 2 + 20, (mon.Bottom - mon.Top) + 10, AppState.OneCmdHwnd
+        )
+        WinHide(AppState.OneCmdHwnd)
+        if WinActive(AppState.OneCmdHwnd)
+            Send("!{Esc}")
+        AppState.IsHidden := true
+    } catch {
+        MsgBox("Error: Target window not found or cannot be moved.")
+    }
 }
 
 ResetTargetState() {
@@ -134,8 +137,15 @@ ResetTargetState() {
     AppState.IsHidden := false
 }
 
-; ========== 退出处理函数 ==========
+; ========== 工具函数 ==========
+GetMonitorBounds(n) {
+    if (n < 1 || n > MonitorGetCount())
+        n := 1
+    MonitorGet(n, &l, &t, &r, &b)
+    return { Left: l, Top: t, Right: r, Bottom: b }
+}
 
+; ========== 退出处理函数 ==========
 HandleExit(Reason, Code) {
     AppState.Exiting := true
     ExitGracefully()
