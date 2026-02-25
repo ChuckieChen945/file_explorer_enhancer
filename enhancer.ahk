@@ -321,6 +321,17 @@ class ToggleWindow extends WindowBase {
         this.Toggle()
     }
 
+    GetMouseMonitor() {
+        MouseGetPos(&mx, &my)
+        monCount := MonitorGetCount()
+        loop monCount {
+            MonitorGet(A_Index, &L, &T, &R, &B)
+            if (mx >= L && mx < R && my >= T && my < B)
+                return A_Index
+        }
+        return 1  ; 找不到时退回主显示器
+    }
+
     Toggle() {
         ; 如果未初始化，先初始化
         if !this.IsInitialized {
@@ -343,29 +354,25 @@ class ToggleWindow extends WindowBase {
             WinHide("ahk_id " this.Hwnd)
             Send("!{Esc}")
         } else {
-            Logger.Write("显示窗口")
-            this.EnsureInMonitor()
+            mouseMon := this.GetMouseMonitor()
+            Logger.Write("显示窗口到显示器 " . mouseMon)
+            this.MoveToSpecificMonitor(mouseMon)
             WinShow("ahk_id " this.Hwnd)
             WinActivate("ahk_id " this.Hwnd)
         }
     }
 
-    ; 确保窗口在目标显示器内
-    EnsureInMonitor() {
-        WinGetPos(&x, &y, &w, &h, "ahk_id " this.Hwnd)
-        centerX := x + (w / 2)
-        centerY := y + (h / 2)
-        mon := MonitorHelper.GetRect(this.TargetMonitor)
+    MoveToSpecificMonitor(monitorIndex) {
+        if !this.FindWindow()
+            return
 
-        isInMonitor := (centerX >= mon.L && centerX <= mon.R && centerY >= mon.T && centerY <= mon.B)
-
-        if !isInMonitor {
-            Logger.Write("窗口不在目标显示器，重新定位")
-            this.MoveToMonitor()
-        }
+        mon := MonitorHelper.GetRect(monitorIndex)
+        WinRestore("ahk_id " this.Hwnd)
+        WinMove(mon.L, mon.T, mon.W, mon.H, "ahk_id " this.Hwnd)
+        WinMaximize("ahk_id " this.Hwnd)
     }
-}
 
+}
 ; ==============================================================================
 ; 应用程序主类
 ; ==============================================================================
