@@ -9,7 +9,7 @@ Persistent
 class Config {
     static OneCmdProcess := "onecommander.exe"
     static EdgeProcess := "msedge.exe"
-    static EdgeUrl := "https://gemini.google.com"
+    static EdgeUrl := "https://claude.ai/new"
     static TargetMonitor := 0
     static CheckInterval := 300
     static EdgeHotkey := "#z"
